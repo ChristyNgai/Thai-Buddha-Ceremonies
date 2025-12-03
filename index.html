@@ -2,42 +2,187 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的 AI 助手</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        textarea { width: 100%; height: 100px; margin-bottom: 10px; }
-        button { padding: 10px 20px; cursor: pointer; background: #0070f3; color: white; border: none; }
-        #reply { background: #f0f0f0; padding: 15px; margin-top: 20px; border-radius: 5px; white-space: pre-wrap;}
+        /* 1. 全局布局：让页面适应手机和电脑 */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: #f0f2f5; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* 2. 顶部标题栏 */
+        header { 
+            background-color: #ffffff; 
+            padding: 15px; 
+            text-align: center; 
+            font-weight: bold; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            z-index: 10;
+        }
+
+        /* 3. 聊天记录区域 (核心) */
+        #chat-container { 
+            flex: 1; 
+            overflow-y: auto; /* 允许滚动 */
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; /* 气泡之间的间距 */
+        }
+
+        /* 4. 气泡通用样式 */
+        .message { 
+            max-width: 80%; 
+            padding: 12px 16px; 
+            border-radius: 15px; 
+            font-size: 15px; 
+            line-height: 1.5; 
+            word-wrap: break-word; /* 防止长单词撑破气泡 */
+            position: relative;
+            animation: fadeIn 0.3s ease; /* 简单的出现动画 */
+        }
+
+        /* 用户气泡 (右边，蓝色) */
+        .user-message { 
+            align-self: flex-end; 
+            background-color: #0084ff; 
+            color: white; 
+            border-bottom-right-radius: 4px; /* 这是一个设计小细节 */
+        }
+
+        /* AI 气泡 (左边，灰色) */
+        .ai-message { 
+            align-self: flex-start; 
+            background-color: #ffffff; 
+            color: #333; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* 5. 底部输入框区域 */
+        .input-area { 
+            background: white; 
+            padding: 15px; 
+            display: flex; 
+            gap: 10px; 
+            border-top: 1px solid #ddd; 
+        }
+
+        input { 
+            flex: 1; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 20px; 
+            outline: none; 
+            font-size: 16px;
+        }
+
+        input:focus { border-color: #0084ff; }
+
+        button { 
+            padding: 10px 20px; 
+            background-color: #0084ff; 
+            color: white; 
+            border: none; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        /* 动画定义 */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 加载中的三个点动画 */
+        .typing-indicator::after { content: '...'; animation: typing 1.5s infinite; }
+        @keyframes typing { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
     </style>
 </head>
 <body>
-    <h1>🤖 我的专属 AI 助手</h1>
-    <textarea id="prompt" placeholder="请输入你的问题..."></textarea>
-    <br>
-    <button onclick="askAI()">发送给 AI</button>
-    <div id="reply">等待提问...</div>
+
+    <header>🤖 Gemini 智能助手</header>
+
+    <div id="chat-container">
+        <div class="message ai-message">你好！我是你的 AI 助手，有什么可以帮你的吗？</div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="发消息..." onkeypress="handleKeyPress(event)">
+        <button id="sendBtn" onclick="sendMessage()">发送</button>
+    </div>
 
     <script>
-        async function askAI() {
-            const prompt = document.getElementById('prompt').value;
-            const replyBox = document.getElementById('reply');
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        // 核心功能：添加消息到屏幕
+        function appendMessage(text, sender) {
+            const div = document.createElement('div');
+            div.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
+            div.innerText = text;
+            chatContainer.appendChild(div);
             
-            if (!prompt) return;
-            
-            replyBox.innerText = "思考中...";
-            
+            // 自动滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return div; // 返回这个元素方便后续修改
+        }
+
+        // 处理回车键发送
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 1. 显示用户的消息
+            appendMessage(text, 'user');
+            userInput.value = ''; // 清空输入框
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // 2. 显示一个“思考中”的临时气泡
+            const loadingBubble = appendMessage('思考中', 'ai');
+            loadingBubble.classList.add('typing-indicator'); // 加上动画
+
             try {
-                // 发送请求给你的 Vercel 后端
+                // 3. 发送给后端
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
+                    body: JSON.stringify({ prompt: text })
                 });
                 
                 const data = await response.json();
-                replyBox.innerText = data.text || "出错了：" + data.error;
+
+                // 4. 收到回复：移除“思考中”样式，填入真正的内容
+                loadingBubble.classList.remove('typing-indicator');
+                
+                if (data.error) {
+                    loadingBubble.innerText = "出错了: " + data.error;
+                    loadingBubble.style.color = "red";
+                } else {
+                    loadingBubble.innerText = data.text;
+                }
+
             } catch (e) {
-                replyBox.innerText = "请求失败，请检查网络";
+                loadingBubble.innerText = "网络错误，请稍后再试。";
+            } finally {
+                // 5. 恢复输入框
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+                // 再次滚动到底部确保能看到最新回复
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         }
     </script>
