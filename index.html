@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>我的 AI 助手</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; background: #0070f3; color: white; border: none; }
+        #reply { background: #f0f0f0; padding: 15px; margin-top: 20px; border-radius: 5px; white-space: pre-wrap;}
+    </style>
+</head>
+<body>
+    <h1>🤖 我的专属 AI 助手</h1>
+    <textarea id="prompt" placeholder="请输入你的问题..."></textarea>
+    <br>
+    <button onclick="askAI()">发送给 AI</button>
+    <div id="reply">等待提问...</div>
+
+    <script>
+        async function askAI() {
+            const prompt = document.getElementById('prompt').value;
+            const replyBox = document.getElementById('reply');
+            
+            if (!prompt) return;
+            
+            replyBox.innerText = "思考中...";
+            
+            try {
+                // 发送请求给你的 Vercel 后端
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                const data = await response.json();
+                replyBox.innerText = data.text || "出错了：" + data.error;
+            } catch (e) {
+                replyBox.innerText = "请求失败，请检查网络";
+            }
+        }
+    </script>
+</body>
+</html>
