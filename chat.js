@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-  // CORS 设置
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   
@@ -12,27 +11,37 @@ export default async function handler(req, res) {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     
-    // 1. 获取前端发来的：当前问题 (prompt) 和 历史记录 (history)
-    const { prompt, history } = JSON.parse(req.body);
+    // ★ 修改点：更安全的解析方式
+    let data = req.body;
+    // 如果 Vercel 没有自动解析，它就是字符串，我们需要手动 parse
+    if (typeof data === 'string') {
+        try {
+            data = JSON.parse(data);
+        } catch (e) {
+            return res.status(400).json({ error: "无效的 JSON 数据" });
+        }
+    }
+    
+    const { prompt, history } = data;
 
-    // 2. 准备模型
+    // 检查是否有 prompt
+    if (!prompt) {
+        return res.status(400).json({ error: "问题不能为空" });
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // 3. 开启聊天模式 (startChat)
-    // 这里我们将前端传来的 history 喂给它，恢复上下文
     const chat = model.startChat({
-      history: history || [] // 如果没有历史，就用空数组
+      history: history || []
     });
 
-    // 4. 发送新消息 (sendMessage) 而不是 generateContent
     const result = await chat.sendMessage(prompt);
     const response = await result.response;
     const text = response.text();
 
-    // 5. 返回结果
     res.status(200).json({ text });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "服务器内部错误" });
+    console.error("服务器报错详情:", error); // 这行字会出现在 Vercel Logs 里
+    res.status(500).json({ error: "服务器内部错误，请查看 Vercel Logs" });
   }
 }
