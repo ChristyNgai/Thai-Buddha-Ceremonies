@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = "AIza...;
     if (!apiKey) throw new Error("API Key 缺失");
 
     const genAI = new GoogleGenerativeAI(apiKey);
